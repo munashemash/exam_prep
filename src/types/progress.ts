@@ -15,3 +15,10 @@ export interface TopicPerformance {
   correct: number;
   accuracy: number;
 }
+
+export interface RevisionRecord {
+  id: string;
+  questionId: string;
+  topic: Topic;
+  revisedAt: string;
+}
