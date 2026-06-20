@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -38,6 +38,7 @@ export function PracticeMode() {
   const [randomizeKey, setRandomizeKey] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const questionStartedAt = useRef(Date.now());
   const recordAttempt = useStudyStore((state) => state.recordAttempt);
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export function PracticeMode() {
   const resetQuestion = useCallback(() => {
     setQuestionIndex(0);
     setSelectedAnswer(null);
+    questionStartedAt.current = Date.now();
   }, []);
 
   const selectAnswer = useCallback(
@@ -75,6 +77,11 @@ export function PracticeMode() {
         questionType: "mcq",
         topic: currentQuestion.topic,
         correct: answerIndex === currentQuestion.correctAnswer,
+        source: "practice",
+        durationSeconds: Math.max(
+          1,
+          Math.round((Date.now() - questionStartedAt.current) / 1000),
+        ),
       });
     },
     [currentQuestion, recordAttempt, selectedAnswer],
@@ -84,6 +91,7 @@ export function PracticeMode() {
     if (!answered || questions.length === 0) return;
     setQuestionIndex((current) => (current + 1) % questions.length);
     setSelectedAnswer(null);
+    questionStartedAt.current = Date.now();
   }, [answered, questions.length]);
 
   useEffect(() => {
