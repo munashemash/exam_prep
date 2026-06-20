@@ -7,6 +7,26 @@ export interface AnswerAttempt {
   topic: Topic;
   correct: boolean;
   answeredAt: string;
+  source?: "practice" | "exam";
+  durationSeconds?: number;
+}
+
+export interface ExamAnswer {
+  questionId: string;
+  topic: Topic;
+  selectedAnswer: number | null;
+  correctAnswer: number;
+  correct: boolean;
+}
+
+export interface ExamAttempt {
+  id: string;
+  startedAt: string;
+  completedAt: string;
+  durationSeconds: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  answers: ExamAnswer[];
 }
 
 export interface TopicPerformance {
