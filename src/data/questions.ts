@@ -1671,7 +1671,7 @@ function structureExplanation(question: MCQQuestion): string {
     `2. Mechanism: ${question.explanation}`,
     `3. Purpose: ${guidance.purpose}`,
     `4. Example: For this question, the correct application is “${correctOption}”.`,
-  ].join("\\n");
+  ].join("\n");
 }
 
 export const mcqQuestions: MCQQuestion[] = rawMcqQuestions.map((question) =>
