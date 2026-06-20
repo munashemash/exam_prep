@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useStudyStore } from "@/store/use-study-store";
 import { useMounted } from "@/hooks/use-mounted";
+import { AccountCard } from "@/components/auth/account-card";
 
 function SettingRow({
   icon: Icon,
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         title="Settings"
         description="Tune the practice environment to match how you study best."
       />
+      <AccountCard />
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader>

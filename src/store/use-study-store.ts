@@ -22,6 +22,11 @@ type StudyState = {
   clearAttempts: () => void;
   markRevised: (questionId: string, topic: Topic) => void;
   saveExamAttempt: (attempt: ExamAttempt) => void;
+  mergeCloudData: (data: {
+    attempts?: AnswerAttempt[];
+    revisions?: RevisionRecord[];
+    examAttempts?: ExamAttempt[];
+  }) => void;
 };
 
 export const useStudyStore = create<StudyState>()(
@@ -79,6 +84,22 @@ export const useStudyStore = create<StudyState>()(
             })),
           ],
         })),
+      mergeCloudData: (data) =>
+        set((state) => {
+          const mergeById = <T extends { id: string }>(
+            local: T[],
+            remote: T[] = [],
+          ) => {
+            const merged = new Map(local.map((item) => [item.id, item]));
+            remote.forEach((item) => merged.set(item.id, item));
+            return [...merged.values()];
+          };
+          return {
+            attempts: mergeById(state.attempts, data.attempts),
+            revisions: mergeById(state.revisions, data.revisions),
+            examAttempts: mergeById(state.examAttempts, data.examAttempts),
+          };
+        }),
     }),
     {
       name: "cos332-study-preferences",
