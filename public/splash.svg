@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1290" height="2796" viewBox="0 0 1290 2796">
+  <rect width="1290" height="2796" fill="#070b14"/>
+  <g transform="translate(453 1170) scale(2)">
+    <rect width="192" height="192" rx="42" fill="#0d1722"/>
+    <path d="M96 39c-17 0-30 12-31 28-13 2-23 14-23 28 0 12 7 22 17 27 1 18 16 31 34 31 15 0 28-10 32-24 15-2 26-15 26-30 0-13-8-24-19-28-2-18-17-32-36-32Z" fill="none" stroke="#34d399" stroke-width="9"/>
+  </g>
+  <text x="645" y="1650" text-anchor="middle" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="64" font-weight="700">COS332</text>
+  <text x="645" y="1725" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="36">Practice Hub</text>
+</svg>
