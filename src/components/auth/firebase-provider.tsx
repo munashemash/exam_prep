@@ -1,9 +1,8 @@
 "use client";
 
 import type { User } from "firebase/auth";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { calculateDashboardAnalytics } from "@/lib/dashboard-analytics";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { getFirebaseServices, isFirebaseConfigured } from "@/lib/firebase";
 import { useStudyStore } from "@/store/use-study-store";
 import type {
@@ -19,12 +18,28 @@ type FirebaseContextValue = {
   configured: boolean;
   syncStatus: SyncStatus;
 };
+type CloudProgress = {
+  attempts?: AnswerAttempt[];
+  revisions?: RevisionRecord[];
+};
+
 const FirebaseContext = createContext<FirebaseContextValue>({
   user: null,
   loading: true,
   configured: isFirebaseConfigured,
   syncStatus: "local",
 });
+
+function isExamAttempt(value: unknown): value is ExamAttempt {
+  if (!value || typeof value !== "object") return false;
+  const attempt = value as Partial<ExamAttempt>;
+  return (
+    typeof attempt.id === "string" &&
+    typeof attempt.startedAt === "string" &&
+    typeof attempt.completedAt === "string" &&
+    Array.isArray(attempt.answers)
+  );
+}
 
 export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -42,15 +57,20 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+
     let active = true;
     let unsubscribe: (() => void) | undefined;
-    const initialize = () => {
-      void getFirebaseServices().then(async (services) => {
+    const initialize = async () => {
+      try {
+        const services = await getFirebaseServices();
         if (!services || !active) {
-          setLoading(false);
+          if (active) setLoading(false);
           return;
         }
-        const { onAuthStateChanged } = await import("firebase/auth");
+        const { browserLocalPersistence, onAuthStateChanged, setPersistence } =
+          await import("firebase/auth");
+        await setPersistence(services.auth, browserLocalPersistence);
+        if (!active) return;
         unsubscribe = onAuthStateChanged(services.auth, (nextUser) => {
           if (!active) return;
           setUser(nextUser);
@@ -58,15 +78,22 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
           setSyncStatus(nextUser ? "connecting" : "local");
           setLoading(false);
         });
-      });
+      } catch {
+        if (!active) return;
+        setUser(null);
+        setLoading(false);
+        setSyncStatus(navigator.onLine ? "error" : "offline");
+      }
     };
+
     // Authentication is immediately relevant on Settings. Elsewhere, defer
     // the cloud SDK so it cannot block the study UI's initial interaction.
     const timer =
       pathname === "/settings"
         ? undefined
-        : window.setTimeout(initialize, 15_000);
-    if (pathname === "/settings") initialize();
+        : window.setTimeout(() => void initialize(), 15_000);
+    if (pathname === "/settings") void initialize();
+
     return () => {
       active = false;
       if (timer !== undefined) window.clearTimeout(timer);
@@ -77,41 +104,75 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+
     void (async () => {
       try {
         const services = await getFirebaseServices();
-        if (!services) return;
-        const { doc, getDoc, setDoc, serverTimestamp } =
-          await import("firebase/firestore");
-        const [progress, history] = await Promise.all([
-          getDoc(doc(services.db, "users", user.uid, "progress", "current")),
-          getDoc(doc(services.db, "users", user.uid, "attempts", "history")),
+        if (!services) {
+          if (!cancelled) setSyncStatus("local");
+          return;
+        }
+        const {
+          collection,
+          doc,
+          getDoc,
+          getDocs,
+          serverTimestamp,
+          setDoc,
+        } = await import("firebase/firestore");
+        const [progressSnapshot, examSnapshots] = await Promise.all([
+          getDoc(doc(services.db, "users", user.uid, "progress", "main")),
+          getDocs(collection(services.db, "users", user.uid, "attempts")),
         ]);
         if (cancelled) return;
-        const progressData = progress.data() as
-          | { attempts?: AnswerAttempt[]; revisions?: RevisionRecord[] }
-          | undefined;
-        const historyData = history.data() as
-          | { examAttempts?: ExamAttempt[] }
-          | undefined;
-        mergeCloudData({ ...progressData, ...historyData });
-        await setDoc(
-          doc(services.db, "users", user.uid),
-          {
-            email: user.email,
-            displayName: user.displayName,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
+
+        const progress = progressSnapshot.data() as CloudProgress | undefined;
+        const cloudExamAttempts = examSnapshots.docs
+          .map((snapshot) => snapshot.data() as unknown)
+          .filter(isExamAttempt);
+
+        // Zustand updates synchronously, so this snapshot contains the union
+        // of localStorage and Firestore records. Local records are never lost.
+        mergeCloudData({ ...progress, examAttempts: cloudExamAttempts });
+        const merged = useStudyStore.getState();
+
+        await Promise.all([
+          setDoc(
+            doc(services.db, "users", user.uid, "progress", "main"),
+            {
+              attempts: merged.attempts,
+              revisions: merged.revisions,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          ),
+          ...merged.examAttempts.map((attempt) =>
+            setDoc(
+              doc(services.db, "users", user.uid, "attempts", attempt.id),
+              { ...attempt, updatedAt: serverTimestamp() },
+              { merge: true },
+            ),
+          ),
+          setDoc(
+            doc(services.db, "users", user.uid),
+            {
+              email: user.email,
+              displayName: user.displayName,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          ),
+        ]);
+
         if (!cancelled) {
           setReadyUserId(user.uid);
-          setSyncStatus("synced");
+          setSyncStatus(navigator.onLine ? "synced" : "offline");
         }
       } catch {
         if (!cancelled) setSyncStatus(navigator.onLine ? "error" : "offline");
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -119,6 +180,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user || readyUserId !== user.uid) return;
+
     const sync = async () => {
       if (!navigator.onLine) {
         setSyncStatus("offline");
@@ -127,32 +189,32 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
       try {
         setSyncStatus("connecting");
         const services = await getFirebaseServices();
-        if (!services) return;
-        const { doc, setDoc, serverTimestamp } =
+        if (!services) {
+          setSyncStatus("local");
+          return;
+        }
+        const { doc, serverTimestamp, setDoc } =
           await import("firebase/firestore");
-        const analytics = calculateDashboardAnalytics(attempts);
         await Promise.all([
-          setDoc(doc(services.db, "users", user.uid, "progress", "current"), {
-            attempts,
-            revisions,
-            updatedAt: serverTimestamp(),
-          }),
-          setDoc(doc(services.db, "users", user.uid, "attempts", "history"), {
-            examAttempts,
-            updatedAt: serverTimestamp(),
-          }),
-          setDoc(doc(services.db, "users", user.uid, "statistics", "summary"), {
-            questionsAnswered: analytics.questionsAnswered,
-            correctAnswers: analytics.correctAnswers,
-            overallAccuracy: analytics.overallAccuracy,
-            updatedAt: serverTimestamp(),
-          }),
+          setDoc(
+            doc(services.db, "users", user.uid, "progress", "main"),
+            { attempts, revisions, updatedAt: serverTimestamp() },
+            { merge: true },
+          ),
+          ...examAttempts.map((attempt) =>
+            setDoc(
+              doc(services.db, "users", user.uid, "attempts", attempt.id),
+              { ...attempt, updatedAt: serverTimestamp() },
+              { merge: true },
+            ),
+          ),
         ]);
         setSyncStatus("synced");
       } catch {
         setSyncStatus(navigator.onLine ? "error" : "offline");
       }
     };
+
     const timer = window.setTimeout(() => void sync(), 900);
     const handleOnline = () => void sync();
     const handleOffline = () => setSyncStatus("offline");
