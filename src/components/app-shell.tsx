@@ -29,7 +29,11 @@ const navigation: NavItem[] = [
 
 function Brand() {
   return (
-    <Link href="/" className="flex items-center gap-2.5">
+    <Link
+      href="/"
+      prefetch={false}
+      className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
       <span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
         <BrainCircuit className="size-5" />
       </span>
@@ -45,17 +49,20 @@ function NavLinks({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
   return (
     <nav
+      aria-label={mobile ? "Mobile navigation" : "Primary navigation"}
       className={cn("flex", mobile ? "flex-col gap-1" : "items-center gap-1")}
     >
       {navigation.map((item) => {
         const active =
           item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-        return (
+        const link = (
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
@@ -65,6 +72,13 @@ function NavLinks({ mobile = false }: { mobile?: boolean }) {
             {item.title}
           </Link>
         );
+        return mobile ? (
+          <Dialog.Close asChild key={item.href}>
+            {link}
+          </Dialog.Close>
+        ) : (
+          link
+        );
       })}
     </nav>
   );
@@ -73,6 +87,12 @@ function NavLinks({ mobile = false }: { mobile?: boolean }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background motion-reduce:transition-none"
+      >
+        Skip to main content
+      </a>
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 sm:px-6">
           <Brand />
@@ -97,7 +117,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Dialog.Trigger>
               <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
-                <Dialog.Content className="fixed inset-y-0 right-0 z-50 w-[min(88vw,360px)] border-l bg-background p-6 shadow-2xl">
+                <Dialog.Content className="fixed inset-y-0 right-0 z-50 w-[min(88vw,360px)] overflow-y-auto border-l bg-background p-6 shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                  <Dialog.Title className="sr-only">Navigation menu</Dialog.Title>
+                  <Dialog.Description className="sr-only">
+                    Choose a section of the COS332 Practice Hub.
+                  </Dialog.Description>
                   <div className="mb-10 flex items-center justify-between">
                     <Brand />
                     <Dialog.Close asChild>
@@ -110,11 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       </Button>
                     </Dialog.Close>
                   </div>
-                  <Dialog.Close asChild>
-                    <div>
-                      <NavLinks mobile />
-                    </div>
-                  </Dialog.Close>
+                  <NavLinks mobile />
                   <div className="absolute bottom-6 left-6 right-6 rounded-lg border bg-card p-4">
                     <p className="text-sm font-medium">Keep the momentum</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -127,7 +147,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+      <main
+        id="main-content"
+        className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-8 outline-none sm:px-6 sm:py-10 lg:py-12"
+      >
         {children}
       </main>
       <footer className="border-t">

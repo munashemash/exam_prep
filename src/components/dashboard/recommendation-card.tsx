@@ -28,7 +28,7 @@ export function RecommendationCard({ topic }: { topic: TopicPerformance }) {
           </div>
         </div>
         <Button asChild className="mt-5 w-full">
-          <Link href={`/practice?topic=${topic.topic}`}>
+          <Link href={`/practice?topic=${topic.topic}`} prefetch={false}>
             Practice this topic <ArrowRight className="size-4" />
           </Link>
         </Button>

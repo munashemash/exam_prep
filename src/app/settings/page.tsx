@@ -50,9 +50,16 @@ export default function SettingsPage() {
     setDailyGoal,
     setSoundEnabled,
     setReducedMotion,
+    resetAllData,
   } = useStudyStore();
   if (!mounted)
-    return <div className="h-96 animate-pulse rounded-xl bg-card" />;
+    return (
+      <div
+        className="h-96 animate-pulse rounded-xl bg-card"
+        role="status"
+        aria-label="Loading settings"
+      />
+    );
   return (
     <div className="space-y-8">
       <PageHeader
@@ -77,7 +84,7 @@ export default function SettingsPage() {
                 aria-label="Daily question goal"
                 value={dailyGoal}
                 onChange={(event) => setDailyGoal(Number(event.target.value))}
-                className="h-10 rounded-md border bg-background px-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+                className="h-10 rounded-md border bg-background px-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -119,7 +126,19 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="destructive" className="w-full">
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Reset all local study progress and preferences? This cannot be undone.",
+                  )
+                ) {
+                  resetAllData();
+                }
+              }}
+            >
               <RotateCcw className="size-4" />
               Reset all data
             </Button>

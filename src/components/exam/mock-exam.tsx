@@ -206,13 +206,16 @@ function ActiveExam({
           </p>
           <Progress
             value={(answeredCount / questions.length) * 100}
+            aria-label={`${answeredCount} of ${questions.length} questions answered`}
             className="mt-2 w-32 sm:w-52"
           />
         </div>
         <div
+          role="timer"
+          aria-label={`${minutes} minutes and ${seconds} seconds remaining`}
           className={cn(
             "flex items-center gap-2 rounded-lg border px-3 py-2 font-mono text-sm",
-            remainingSeconds < 300 && "border-destructive/50 text-destructive",
+            remainingSeconds < 300 && "border-red-400/50 text-red-400",
           )}
         >
           <Clock3 className="size-4" />
@@ -237,6 +240,8 @@ function ActiveExam({
               <button
                 key={option}
                 type="button"
+                aria-pressed={answers[question.id] === optionIndex}
+                aria-label={`Answer ${optionIndex + 1}: ${option}`}
                 onClick={() =>
                   setAnswers((current) => ({
                     ...current,
@@ -244,7 +249,7 @@ function ActiveExam({
                   }))
                 }
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   answers[question.id] === optionIndex &&
                     "border-primary bg-primary/10",
                 )}
@@ -285,10 +290,11 @@ function ActiveExam({
                 <button
                   key={item.id}
                   type="button"
-                  aria-label={`Go to question ${index + 1}`}
+                  aria-current={index === currentIndex ? "step" : undefined}
+                  aria-label={`Go to question ${index + 1}${answers[item.id] !== undefined ? ", answered" : ", unanswered"}`}
                   onClick={() => setCurrentIndex(index)}
                   className={cn(
-                    "grid aspect-square place-items-center rounded-md border text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "grid aspect-square place-items-center rounded-md border text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                     index === currentIndex &&
                       "border-primary ring-1 ring-primary",
                     answers[item.id] !== undefined &&
@@ -400,6 +406,7 @@ function ExamResults({
               </div>
               <Progress
                 value={item.accuracy}
+                aria-label={`${topicLabels[item.topic]} accuracy: ${item.accuracy}%`}
                 className={
                   item.accuracy < 80 ? "[&>div]:bg-amber-400" : undefined
                 }

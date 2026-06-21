@@ -2,6 +2,7 @@
 
 import type { User } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { calculateDashboardAnalytics } from "@/lib/dashboard-analytics";
 import { getFirebaseServices, isFirebaseConfigured } from "@/lib/firebase";
 import { useStudyStore } from "@/store/use-study-store";
@@ -26,6 +27,7 @@ const FirebaseContext = createContext<FirebaseContextValue>({
 });
 
 export function FirebaseProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(isFirebaseConfigured);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("local");
@@ -42,25 +44,35 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
     }
     let active = true;
     let unsubscribe: (() => void) | undefined;
-    void getFirebaseServices().then(async (services) => {
-      if (!services || !active) {
-        setLoading(false);
-        return;
-      }
-      const { onAuthStateChanged } = await import("firebase/auth");
-      unsubscribe = onAuthStateChanged(services.auth, (nextUser) => {
-        if (!active) return;
-        setUser(nextUser);
-        setReadyUserId(null);
-        setSyncStatus(nextUser ? "connecting" : "local");
-        setLoading(false);
+    const initialize = () => {
+      void getFirebaseServices().then(async (services) => {
+        if (!services || !active) {
+          setLoading(false);
+          return;
+        }
+        const { onAuthStateChanged } = await import("firebase/auth");
+        unsubscribe = onAuthStateChanged(services.auth, (nextUser) => {
+          if (!active) return;
+          setUser(nextUser);
+          setReadyUserId(null);
+          setSyncStatus(nextUser ? "connecting" : "local");
+          setLoading(false);
+        });
       });
-    });
+    };
+    // Authentication is immediately relevant on Settings. Elsewhere, defer
+    // the cloud SDK so it cannot block the study UI's initial interaction.
+    const timer =
+      pathname === "/settings"
+        ? undefined
+        : window.setTimeout(initialize, 15_000);
+    if (pathname === "/settings") initialize();
     return () => {
       active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
       unsubscribe?.();
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!user) return;

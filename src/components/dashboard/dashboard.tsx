@@ -25,7 +25,13 @@ export function Dashboard() {
 
   if (!mounted) {
     return (
-      <div className="space-y-8" aria-label="Loading dashboard">
+      <div
+        className="space-y-8"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading dashboard"
+      >
+        <span className="sr-only">Loading dashboard</span>
         <div className="h-32 animate-pulse rounded-xl bg-card" />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="h-40 animate-pulse rounded-xl bg-card xl:col-span-2" />
@@ -46,7 +52,9 @@ export function Dashboard() {
         description="A focused view of your readiness for the 24 June exam. Your progress stays in this browser."
       >
         <Button asChild>
-          <Link href="/practice">Continue practice</Link>
+          <Link href="/practice" prefetch={false}>
+            Continue practice
+          </Link>
         </Button>
       </PageHeader>
 

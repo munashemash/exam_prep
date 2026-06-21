@@ -42,7 +42,7 @@ export function OnboardingCard() {
             and next recommendation automatically.
           </p>
           <Button asChild className="mt-6">
-            <Link href="/practice">
+            <Link href="/practice" prefetch={false}>
               Start your first practice set <ArrowRight className="size-4" />
             </Link>
           </Button>

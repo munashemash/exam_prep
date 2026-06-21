@@ -25,7 +25,7 @@ export const CardTitle = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3
+  <h2
     className={cn("font-semibold leading-none tracking-tight", className)}
     {...props}
   />

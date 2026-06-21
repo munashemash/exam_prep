@@ -46,6 +46,7 @@ export function TopicPerformanceCard({
             </div>
             <Progress
               value={item.accuracy}
+              aria-label={`${topicLabels[item.topic]} accuracy: ${item.accuracy}%`}
               className={
                 item.accuracy < 80 ? "[&>div]:bg-amber-400" : undefined
               }

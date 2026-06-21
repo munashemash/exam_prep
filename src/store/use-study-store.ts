@@ -20,6 +20,7 @@ type StudyState = {
   setReducedMotion: (enabled: boolean) => void;
   recordAttempt: (attempt: Omit<AnswerAttempt, "id" | "answeredAt">) => void;
   clearAttempts: () => void;
+  resetAllData: () => void;
   markRevised: (questionId: string, topic: Topic) => void;
   saveExamAttempt: (attempt: ExamAttempt) => void;
   mergeCloudData: (data: {
@@ -53,6 +54,15 @@ export const useStudyStore = create<StudyState>()(
           ],
         })),
       clearAttempts: () => set({ attempts: [] }),
+      resetAllData: () =>
+        set({
+          dailyGoal: 20,
+          soundEnabled: false,
+          reducedMotion: false,
+          attempts: [],
+          revisions: [],
+          examAttempts: [],
+        }),
       markRevised: (questionId, topic) =>
         set((state) => ({
           revisions: [

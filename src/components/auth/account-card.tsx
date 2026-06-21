@@ -103,32 +103,39 @@ export function AccountCard() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-busy={busy}>
+            <span className="sr-only" role="status" aria-live="polite">
+              {busy ? "Authentication in progress" : ""}
+            </span>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-xs text-muted-foreground">
                 Email
                 <input
                   type="email"
+                  name="email"
+                  required
                   autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="h-10 rounded-md border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-10 rounded-md border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
                 />
               </label>
               <label className="grid gap-1.5 text-xs text-muted-foreground">
                 Password
                 <input
                   type="password"
+                  name="password"
+                  required
                   autoComplete="current-password"
                   minLength={6}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="h-10 rounded-md border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-10 rounded-md border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
                 />
               </label>
             </div>
             {error && (
-              <p role="alert" className="text-xs text-destructive">
+              <p role="alert" className="text-xs text-red-400">
                 {error}
               </p>
             )}

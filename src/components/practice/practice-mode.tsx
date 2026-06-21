@@ -140,7 +140,7 @@ export function PracticeMode() {
               onChange={(event) =>
                 updateTopic(event.target.value as TopicFilter)
               }
-              className="h-10 rounded-md border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 rounded-md border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
             >
               <option value="all">All topics</option>
               {Object.entries(topicLabels).map(([value, label]) => (
@@ -157,7 +157,7 @@ export function PracticeMode() {
               onChange={(event) =>
                 updateDifficulty(event.target.value as DifficultyFilter)
               }
-              className="h-10 rounded-md border bg-background px-3 text-sm capitalize text-foreground outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 rounded-md border bg-background px-3 text-sm capitalize text-foreground outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
             >
               <option value="all">All difficulties</option>
               <option value="easy">Easy</option>
@@ -196,6 +196,7 @@ export function PracticeMode() {
             </div>
             <Progress
               value={((questionIndex + 1) / questions.length) * 100}
+              aria-label={`Question ${questionIndex + 1} of ${questions.length}`}
               className="mt-4"
             />
             <CardTitle className="pt-5 text-xl leading-8 sm:text-2xl">
@@ -212,9 +213,11 @@ export function PracticeMode() {
                     key={option}
                     type="button"
                     disabled={answered}
+                    aria-pressed={selected}
+                    aria-label={`Answer ${index + 1}: ${option}`}
                     onClick={() => selectAnswer(index)}
                     className={cn(
-                      "flex min-h-12 items-center gap-3 rounded-lg border p-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100",
+                      "flex min-h-12 items-center gap-3 rounded-lg border p-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-default disabled:opacity-100",
                       !answered && "hover:border-primary/50 hover:bg-primary/5",
                       answered && correct && "border-primary bg-primary/10",
                       answered &&
@@ -290,7 +293,7 @@ function AnswerFeedback({
 }) {
   const correct = selectedAnswer === question.correctAnswer;
   return (
-    <div className="space-y-4" aria-live="polite">
+    <div className="space-y-4" role="status" aria-live="polite">
       <div
         className={cn(
           "flex items-start gap-3 rounded-lg border p-4",
@@ -300,6 +303,7 @@ function AnswerFeedback({
         )}
       >
         <span
+          aria-hidden="true"
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-full",
             correct

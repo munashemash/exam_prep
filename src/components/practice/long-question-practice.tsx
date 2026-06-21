@@ -81,6 +81,7 @@ export function LongQuestionPractice() {
           </div>
           <Progress
             value={((index + 1) / longQuestions.length) * 100}
+            aria-label={`Question ${index + 1} of ${longQuestions.length}`}
             className="mt-4"
           />
           <CardTitle className="pt-5 text-xl leading-8 sm:text-2xl">
