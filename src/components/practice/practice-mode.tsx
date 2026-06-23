@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
+  CheckCircle2,
   ChevronRight,
   Keyboard,
   RotateCw,
@@ -22,6 +23,15 @@ import { cn } from "@/lib/utils";
 
 type TopicFilter = Topic | "all";
 type DifficultyFilter = Difficulty | "all";
+type PracticeState = "active" | "complete";
+
+type PracticeAnswer = {
+  questionId: string;
+  topic: Topic;
+  selectedAnswer: number;
+  correctAnswer: number;
+  correct: boolean;
+};
 
 function shuffle<T>(items: T[]): T[] {
   const result = [...items];
@@ -38,6 +48,8 @@ export function PracticeMode() {
   const [randomizeKey, setRandomizeKey] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [practiceState, setPracticeState] = useState<PracticeState>("active");
+  const [sessionAnswers, setSessionAnswers] = useState<PracticeAnswer[]>([]);
   const questionStartedAt = useRef(Date.now());
   const recordAttempt = useStudyStore((state) => state.recordAttempt);
 
@@ -61,10 +73,13 @@ export function PracticeMode() {
 
   const currentQuestion = questions[questionIndex];
   const answered = selectedAnswer !== null;
+  const isLastQuestion = questionIndex === questions.length - 1;
 
   const resetQuestion = useCallback(() => {
     setQuestionIndex(0);
     setSelectedAnswer(null);
+    setPracticeState("active");
+    setSessionAnswers([]);
     questionStartedAt.current = Date.now();
   }, []);
 
@@ -72,6 +87,16 @@ export function PracticeMode() {
     (answerIndex: number) => {
       if (!currentQuestion || selectedAnswer !== null) return;
       setSelectedAnswer(answerIndex);
+      setSessionAnswers((current) => [
+        ...current,
+        {
+          questionId: currentQuestion.id,
+          topic: currentQuestion.topic,
+          selectedAnswer: answerIndex,
+          correctAnswer: currentQuestion.correctAnswer,
+          correct: answerIndex === currentQuestion.correctAnswer,
+        },
+      ]);
       recordAttempt({
         questionId: currentQuestion.id,
         questionType: "mcq",
@@ -89,10 +114,14 @@ export function PracticeMode() {
 
   const nextQuestion = useCallback(() => {
     if (!answered || questions.length === 0) return;
-    setQuestionIndex((current) => (current + 1) % questions.length);
+    if (isLastQuestion) {
+      setPracticeState("complete");
+      return;
+    }
+    setQuestionIndex((current) => current + 1);
     setSelectedAnswer(null);
     questionStartedAt.current = Date.now();
-  }, [answered, questions.length]);
+  }, [answered, isLastQuestion, questions.length]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -122,6 +151,18 @@ export function PracticeMode() {
     setDifficulty(value);
     resetQuestion();
   };
+
+  if (practiceState === "complete") {
+    return (
+      <PracticeResults
+        answers={sessionAnswers}
+        questions={questions}
+        topic={topic}
+        difficulty={difficulty}
+        onRestart={resetQuestion}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -265,7 +306,8 @@ export function PracticeMode() {
                 Use 1–4 to answer and Enter to continue.
               </p>
               <Button onClick={nextQuestion} disabled={!answered}>
-                Next question <ChevronRight className="size-4" />
+                {isLastQuestion ? "Show results" : "Next question"}{" "}
+                <ChevronRight className="size-4" />
               </Button>
             </div>
           </CardContent>
@@ -280,6 +322,153 @@ export function PracticeMode() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function PracticeResults({
+  answers,
+  questions,
+  topic,
+  difficulty,
+  onRestart,
+}: {
+  answers: PracticeAnswer[];
+  questions: MCQQuestion[];
+  topic: TopicFilter;
+  difficulty: DifficultyFilter;
+  onRestart: () => void;
+}) {
+  const correctAnswers = answers.filter((answer) => answer.correct).length;
+  const percentage =
+    answers.length > 0 ? Math.round((correctAnswers / answers.length) * 100) : 0;
+  const sectionLabel = [
+    topic === "all" ? "All topics" : topicLabels[topic],
+    difficulty === "all" ? "all difficulties" : `${difficulty} difficulty`,
+  ].join(" · ");
+  const questionMap = new Map(
+    questions.map((question) => [question.id, question]),
+  );
+  const incorrect = answers.filter((answer) => !answer.correct);
+  const breakdown = Object.entries(
+    answers.reduce(
+      (result, answer) => {
+        const current = result[answer.topic] ?? { correct: 0, total: 0 };
+        current.total += 1;
+        current.correct += answer.correct ? 1 : 0;
+        result[answer.topic] = current;
+        return result;
+      },
+      {} as Partial<Record<Topic, { correct: number; total: number }>>,
+    ),
+  ).map(([topicKey, result]) => ({
+    topic: topicKey as Topic,
+    correct: result.correct,
+    total: result.total,
+    accuracy: Math.round((result.correct / result.total) * 100),
+  }));
+
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Practice results"
+        title={`${percentage}% section grade`}
+        description={`${correctAnswers} correct from ${answers.length} questions · ${sectionLabel}.`}
+      >
+        <Button onClick={onRestart}>
+          <RotateCw className="size-4" />
+          Practice this section again
+        </Button>
+      </PageHeader>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-5">
+            <CheckCircle2 className="size-5 text-primary" />
+            <p className="mt-4 text-3xl font-semibold">
+              {correctAnswers}/{answers.length}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Final score</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <AlertTriangle className="size-5 text-amber-400" />
+            <p className="mt-4 text-3xl font-semibold">{incorrect.length}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Questions to revisit
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <Keyboard className="size-5 text-primary" />
+            <p className="mt-4 text-3xl font-semibold">{breakdown.length}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Topics covered
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Section breakdown</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {breakdown.map((item) => (
+            <div key={item.topic}>
+              <div className="mb-2 flex justify-between gap-4 text-sm">
+                <span>{topicLabels[item.topic]}</span>
+                <span>
+                  {item.correct}/{item.total} · {item.accuracy}%
+                </span>
+              </div>
+              <Progress
+                value={item.accuracy}
+                aria-label={`${topicLabels[item.topic]} accuracy: ${item.accuracy}%`}
+                className={
+                  item.accuracy < 80 ? "[&>div]:bg-amber-400" : undefined
+                }
+              />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Review missed questions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {incorrect.length === 0 ? (
+            <p className="text-sm text-primary">
+              Perfect score — no missed questions in this section.
+            </p>
+          ) : (
+            incorrect.map((answer, index) => {
+              const question = questionMap.get(answer.questionId);
+              if (!question) return null;
+              return (
+                <div key={answer.questionId} className="rounded-lg border p-4">
+                  <p className="text-sm font-semibold">
+                    {index + 1}. {question.question}
+                  </p>
+                  <p className="mt-3 text-sm text-destructive">
+                    Your answer: {question.options[answer.selectedAnswer]}
+                  </p>
+                  <p className="mt-1 text-sm text-primary">
+                    Correct: {question.options[answer.correctAnswer]}
+                  </p>
+                  <p className="mt-3 whitespace-pre-line text-xs leading-6 text-muted-foreground">
+                    {question.explanation}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
